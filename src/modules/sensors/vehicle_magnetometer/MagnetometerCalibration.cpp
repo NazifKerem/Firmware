@@ -122,6 +122,9 @@ void MagnetometerCalibration::ParametersUpdate()
 
 		_enabled = (enabled_val == 1);
 
+		Vector3f offdiagonal;
+		offdiagonal.zero();
+
 		for (int axis = 0; axis < 3; axis++) {
 			char axis_char = 'X' + axis;
 
@@ -133,10 +136,26 @@ void MagnetometerCalibration::ParametersUpdate()
 			sprintf(str, "CAL_%s%u_%cSCALE", SensorString(), calibration_index, axis_char);
 			param_get(param_find(str), &_scale(axis, axis));
 
+			// off diagonal factors
+			sprintf(str, "CAL_%s%u_%cODIAG", SensorString(), calibration_index, axis_char);
+			param_get(param_find(str), &offdiagonal(axis));
+
 			// power compensation
 			sprintf(str, "CAL_%s%u_%cCOMP", SensorString(), calibration_index, axis_char);
 			param_get(param_find(str), &_power_compensation(axis));
 		}
+
+		// off diagonal X
+		_scale(0, 1) = offdiagonal(0);
+		_scale(1, 0) = offdiagonal(0);
+
+		// off diagonal Y
+		_scale(0, 2) = offdiagonal(1);
+		_scale(2, 0) = offdiagonal(1);
+
+		// off diagonal Z
+		_scale(1, 2) = offdiagonal(2);
+		_scale(2, 1) = offdiagonal(2);
 
 	} else {
 		_enabled = true;
@@ -153,6 +172,10 @@ void MagnetometerCalibration::PrintStatus()
 	PX4_INFO("%s %d EN: %d, offset: [%.4f %.4f %.4f] scale: [%.4f %.4f %.4f]", SensorString(), _device_id, _enabled,
 		 (double)_offset(0), (double)_offset(1), (double)_offset(2),
 		 (double)_scale(0, 0), (double)_scale(1, 1), (double)_scale(2, 2));
+
+#if defined(DEBUG_BUILD)
+	_scale.print();
+#endif // DEBUG_BUILD
 }
 
 } // namespace sensors
